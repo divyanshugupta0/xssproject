@@ -831,8 +831,8 @@ def index():
                         <div class="payload-item" onclick="{'copyToClipboard(this)' if security_mode == 'low' else 'showBlocked(this)'}">{'javascript:alert("XSS JavaScript")' if security_mode == 'low' else 'javascript:alert("XSS JavaScript") [BLOCKED]'}</div>
                         <div class="payload-item" onclick="{'copyToClipboard(this)' if security_mode == 'low' else 'showBlocked(this)'}">{'&lt;body onload=alert("XSS Body")&gt;' if security_mode == 'low' else '&lt;body onload=alert("XSS Body")&gt; [BLOCKED]'}</div>
                         <div class="payload-item" onclick="{'copyToClipboard(this)' if security_mode in ['low', 'moderate'] else 'showBlocked(this)'}">{"; DROP TABLE users; --" if security_mode in ['low', 'moderate'] else "; DROP TABLE users; -- [BLOCKED]"}</div>
-                        <div class="payload-item" onclick="{'copyToClipboard(this)' if security_mode in ['low', 'moderate'] else 'showBlocked(this)'}">{ "OR 1=1" if security_mode in ['low', 'moderate'] else "OR 1=1 [BLOCKED]"}</div>
-                        <div class="payload-item" onclick="{'copyToClipboard(this)' if security_mode in ['low', 'moderate'] else 'showBlocked(this)'}">{ "UNION SELECT * FROM users --" if security_mode in ['low', 'moderate'] else "UNION SELECT * FROM users -- [BLOCKED]"}</div>
+                        <div class="payload-item" onclick="{'copyToClipboard(this)' if security_mode in ['low', 'moderate'] else 'showBlocked(this)'}">{ "' OR 1=1 --" if security_mode in ['low', 'moderate'] else "' OR 1=1 -- [BLOCKED]"}</div>
+                        <div class="payload-item" onclick="{'copyToClipboard(this)' if security_mode in ['low', 'moderate'] else 'showBlocked(this)'}">{ "' UNION SELECT * FROM users --" if security_mode in ['low', 'moderate'] else "' UNION SELECT * FROM users -- [BLOCKED]"}</div>
                     </div>
                 </div>
             </main>
