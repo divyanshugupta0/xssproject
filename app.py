@@ -31,16 +31,27 @@ SECURITY_MODES = {
 }
 
 def get_db():
-    return mysql.connector.connect(**MYSQL_CONFIG)
+    try:
+        return mysql.connector.connect(**MYSQL_CONFIG)
+    except mysql.connector.Error:
+        # Fallback to SQLite if MySQL connection fails
+        import sqlite3
+        return sqlite3.connect('xss_portal.db')
 
 def log_activity(action, user_input, security_mode, vulnerability_detected=''):
     try:
         db = get_db()
         cursor = db.cursor()
-        cursor.execute(
-            "INSERT INTO logs (timestamp, action, user_input, security_mode, vulnerability_detected) VALUES (%s, %s, %s, %s, %s)",
-            (datetime.now(), action, user_input, security_mode, vulnerability_detected)
-        )
+        if isinstance(db, mysql.connector.MySQLConnection):
+            cursor.execute(
+                "INSERT INTO logs (timestamp, action, user_input, security_mode, vulnerability_detected) VALUES (%s, %s, %s, %s, %s)",
+                (datetime.now(), action, user_input, security_mode, vulnerability_detected)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO logs (timestamp, action, user_input, security_mode, vulnerability_detected) VALUES (?, ?, ?, ?, ?)",
+                (datetime.now(), action, user_input, security_mode, vulnerability_detected)
+            )
         db.commit()
         cursor.close()
         db.close()
@@ -85,20 +96,32 @@ def api_search():
     if search_query:
         # SQL Injection protection based on security mode
         if SECURITY_MODES[security_mode]['sql_protection']:
-            cursor.execute(
-                "SELECT * FROM users WHERE username LIKE %s OR email LIKE %s OR role LIKE %s", 
-                (f'%{search_query}%', f'%{search_query}%', f'%{search_query}%')
-            )
+            if isinstance(db, mysql.connector.MySQLConnection):
+                cursor.execute(
+                    "SELECT * FROM users WHERE username LIKE %s OR email LIKE %s OR role LIKE %s", 
+                    (f'%{search_query}%', f'%{search_query}%', f'%{search_query}%')
+                )
+            else:
+                cursor.execute(
+                    "SELECT * FROM users WHERE username LIKE ? OR email LIKE ? OR role LIKE ?", 
+                    (f'%{search_query}%', f'%{search_query}%', f'%{search_query}%')
+                )
         else:
             # Vulnerable SQL query for demonstration
             try:
                 query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%' OR email LIKE '%{search_query}%' OR role LIKE '%{search_query}%'"
                 cursor.execute(query)
             except:
-                cursor.execute(
-                    "SELECT * FROM users WHERE username LIKE %s OR email LIKE %s OR role LIKE %s", 
-                    (f'%{search_query}%', f'%{search_query}%', f'%{search_query}%')
-                )
+                if isinstance(db, mysql.connector.MySQLConnection):
+                    cursor.execute(
+                        "SELECT * FROM users WHERE username LIKE %s OR email LIKE %s OR role LIKE %s", 
+                        (f'%{search_query}%', f'%{search_query}%', f'%{search_query}%')
+                    )
+                else:
+                    cursor.execute(
+                        "SELECT * FROM users WHERE username LIKE ? OR email LIKE ? OR role LIKE ?", 
+                        (f'%{search_query}%', f'%{search_query}%', f'%{search_query}%')
+                    )
     else:
         # Return all users when no search query
         cursor.execute("SELECT * FROM users")
@@ -262,10 +285,16 @@ def add_user():
         
         db = get_db()
         cursor = db.cursor()
-        cursor.execute(
-            "INSERT INTO users (username, email, role) VALUES (%s, %s, %s)", 
-            (username, email, role)
-        )
+        if isinstance(db, mysql.connector.MySQLConnection):
+            cursor.execute(
+                "INSERT INTO users (username, email, role) VALUES (%s, %s, %s)", 
+                (username, email, role)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO users (username, email, role) VALUES (?, ?, ?)", 
+                (username, email, role)
+            )
         db.commit()
         user_id = cursor.lastrowid
         cursor.close()
@@ -498,14 +527,20 @@ def index():
         
         # SQL Injection vulnerability based on security mode
         if SECURITY_MODES[security_mode]['sql_protection']:
-            cursor.execute("SELECT * FROM users WHERE username LIKE %s", (f'%{search_query}%',))
+            if isinstance(db, mysql.connector.MySQLConnection):
+                cursor.execute("SELECT * FROM users WHERE username LIKE %s", (f'%{search_query}%',))
+            else:
+                cursor.execute("SELECT * FROM users WHERE username LIKE ?", (f'%{search_query}%',))
         else:
             # Vulnerable SQL query for demonstration
             try:
                 query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%'"
                 cursor.execute(query)
             except:
-                cursor.execute("SELECT * FROM users WHERE username LIKE %s", (f'%{search_query}%',))
+                if isinstance(db, mysql.connector.MySQLConnection):
+                    cursor.execute("SELECT * FROM users WHERE username LIKE %s", (f'%{search_query}%',))
+                else:
+                    cursor.execute("SELECT * FROM users WHERE username LIKE ?", (f'%{search_query}%',))
         
         results = cursor.fetchall()
         
@@ -895,7 +930,64 @@ def index():
     
     return template
 
+def init_sqlite_fallback():
+    import sqlite3
+    db = sqlite3.connect('xss_portal.db')
+    cursor = db.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL,
+            role TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME NOT NULL,
+            action TEXT NOT NULL,
+            user_input TEXT,
+            security_mode TEXT,
+            vulnerability_detected TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    sample_users = [
+        ('admin', 'admin@portal.com', 'administrator'),
+        ('john_doe', 'john@example.com', 'user'),
+        ('jane_smith', 'jane@example.com', 'moderator'),
+        ('test_user', 'test@portal.com', 'user'),
+        ('guest', 'guest@portal.com', 'guest'),
+        ('alice_cooper', 'alice@security.com', 'security_analyst'),
+        ('bob_wilson', 'bob@dev.com', 'developer'),
+        ('charlie_brown', 'charlie@qa.com', 'tester'),
+        ('divyanshu019','divyanshu019@gmail.com', 'superadmin'),
+        ('radharani','radhakrishna@gmail.com', 'worldadmin')
+    ]
+    
+    for user in sample_users:
+        try:
+            cursor.execute('INSERT OR IGNORE INTO users (username, email, role) VALUES (?, ?, ?)', user)
+        except:
+            pass
+            
+    db.commit()
+    cursor.close()
+    db.close()
+
 if __name__ == '__main__':
-    print(f"Connecting to MySQL at {MYSQL_HOST}:{MYSQL_PORT}")
+    try:
+        print(f"Trying to connect to MySQL at {MYSQL_HOST}:{MYSQL_PORT}")
+        mysql.connector.connect(**MYSQL_CONFIG)
+        print("MySQL connection successful")
+    except:
+        print("MySQL connection failed, using SQLite fallback")
+        init_sqlite_fallback()
+    
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
