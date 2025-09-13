@@ -277,7 +277,7 @@ def regain_database():
         if not isinstance(db, mysql.connector.MySQLConnection):
             for user in sample_users:
                 try:
-                    cursor.execute('INSERT OR IGNORE INTO users (username, email, role) VALUES (?, ?, ?)', user)
+                    cursor.execute('INSERT INTO users (username, email, role) VALUES (?, ?, ?)', user)
                 except:
                     pass
             
