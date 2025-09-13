@@ -36,7 +36,7 @@ def get_db():
     except mysql.connector.Error:
         # Fallback to SQLite if MySQL connection fails
         import sqlite3
-        return sqlite3.connect('xss_portal.db')
+        return sqlite3.connect('xss_portal.db', timeout=20, check_same_thread=False)
 
 def log_activity(action, user_input, security_mode, vulnerability_detected=''):
     try:
@@ -972,7 +972,7 @@ def index():
 
 def init_sqlite_fallback():
     import sqlite3
-    db = sqlite3.connect('xss_portal.db')
+    db = sqlite3.connect('xss_portal.db', timeout=20, check_same_thread=False)
     cursor = db.cursor()
     
     cursor.execute('''
