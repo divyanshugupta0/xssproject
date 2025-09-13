@@ -109,7 +109,21 @@ def api_search():
         else:
             # Vulnerable SQL query for demonstration
             try:
-                query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%' OR email LIKE '%{search_query}%' OR role LIKE '%{search_query}%'"
+                if isinstance(db, mysql.connector.MySQLConnection):
+                    query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%' OR email LIKE '%{search_query}%' OR role LIKE '%{search_query}%'"
+                else:
+                    # SQLite vulnerable query - split multiple statements
+                    if ';' in search_query:
+                        statements = search_query.split(';')
+                        for stmt in statements:
+                            if stmt.strip():
+                                try:
+                                    cursor.execute(stmt.strip())
+                                except:
+                                    pass
+                        query = f"SELECT * FROM users WHERE username LIKE '%{statements[0]}%'"
+                    else:
+                        query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%' OR email LIKE '%{search_query}%' OR role LIKE '%{search_query}%'"
                 cursor.execute(query)
             except:
                 if isinstance(db, mysql.connector.MySQLConnection):
@@ -574,7 +588,21 @@ def index():
         else:
             # Vulnerable SQL query for demonstration
             try:
-                query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%'"
+                if isinstance(db, mysql.connector.MySQLConnection):
+                    query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%'"
+                else:
+                    # SQLite vulnerable query - handle multiple statements
+                    if ';' in search_query:
+                        statements = search_query.split(';')
+                        for stmt in statements:
+                            if stmt.strip():
+                                try:
+                                    cursor.execute(stmt.strip())
+                                except:
+                                    pass
+                        query = f"SELECT * FROM users WHERE username LIKE '%{statements[0]}%'"
+                    else:
+                        query = f"SELECT * FROM users WHERE username LIKE '%{search_query}%'"
                 cursor.execute(query)
             except:
                 if isinstance(db, mysql.connector.MySQLConnection):
