@@ -289,6 +289,33 @@ def regain_database():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/database/info')
+def database_info():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        if isinstance(db, mysql.connector.MySQLConnection):
+            cursor.execute("SHOW TABLES")
+        else:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        
+        tables = cursor.fetchall()
+        
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        
+        cursor.close()
+        db.close()
+        
+        return jsonify({
+            'tables': [table[0] for table in tables],
+            'user_count': user_count,
+            'database_type': 'MySQL' if isinstance(db, mysql.connector.MySQLConnection) else 'SQLite'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
 @app.route('/api/users/list')
 def list_users():
     try:
