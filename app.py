@@ -208,24 +208,57 @@ def regain_database():
         db = get_db()
         cursor = db.cursor()
         
-        sql_commands = [
-            """CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50) NOT NULL UNIQUE,
-                email VARCHAR(100) NOT NULL,
-                role VARCHAR(30) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )""",
-            """CREATE TABLE IF NOT EXISTS logs (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                timestamp DATETIME NOT NULL,
-                action VARCHAR(50) NOT NULL,
-                user_input TEXT,
-                security_mode VARCHAR(20),
-                vulnerability_detected VARCHAR(50),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )""",
-            """INSERT IGNORE INTO users (username, email, role) VALUES 
+        if isinstance(db, mysql.connector.MySQLConnection):
+            sql_commands = [
+                """CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(50) NOT NULL UNIQUE,
+                    email VARCHAR(100) NOT NULL,
+                    role VARCHAR(30) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )""",
+                """CREATE TABLE IF NOT EXISTS logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    timestamp DATETIME NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    user_input TEXT,
+                    security_mode VARCHAR(20),
+                    vulnerability_detected VARCHAR(50),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )""",
+                """INSERT IGNORE INTO users (username, email, role) VALUES 
+                    ('admin', 'admin@portal.com', 'administrator'),
+                    ('john_doe', 'john@example.com', 'user'),
+                    ('jane_smith', 'jane@example.com', 'moderator'),
+                    ('test_user', 'test@portal.com', 'user'),
+                    ('guest', 'guest@portal.com', 'guest'),
+                    ('alice_cooper', 'alice@security.com', 'security_analyst'),
+                    ('bob_wilson', 'bob@dev.com', 'developer'),
+                    ('charlie_brown', 'charlie@qa.com', 'tester'),
+                    ('divyanshu019','divyanshu019@gmail.com', 'superadmin'),
+                    ('radharani','radhakrishna@gmail.com', 'worldadmin')"""
+            ]
+        else:
+            sql_commands = [
+                """CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    email TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )""",
+                """CREATE TABLE IF NOT EXISTS logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp DATETIME NOT NULL,
+                    action TEXT NOT NULL,
+                    user_input TEXT,
+                    security_mode TEXT,
+                    vulnerability_detected TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )"""
+            ]
+            
+            sample_users = [
                 ('admin', 'admin@portal.com', 'administrator'),
                 ('john_doe', 'john@example.com', 'user'),
                 ('jane_smith', 'jane@example.com', 'moderator'),
@@ -235,11 +268,18 @@ def regain_database():
                 ('bob_wilson', 'bob@dev.com', 'developer'),
                 ('charlie_brown', 'charlie@qa.com', 'tester'),
                 ('divyanshu019','divyanshu019@gmail.com', 'superadmin'),
-                ('radharani','radhakrishna@gmail.com', 'worldadmin')"""
-        ]
+                ('radharani','radhakrishna@gmail.com', 'worldadmin')
+            ]
         
         for command in sql_commands:
             cursor.execute(command)
+            
+        if not isinstance(db, mysql.connector.MySQLConnection):
+            for user in sample_users:
+                try:
+                    cursor.execute('INSERT OR IGNORE INTO users (username, email, role) VALUES (?, ?, ?)', user)
+                except:
+                    pass
             
         db.commit()
         cursor.close()
